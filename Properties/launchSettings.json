@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "Keyspeech.PayPal": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7030",
+      "launchBrowser": false
+    }
+  }
+}

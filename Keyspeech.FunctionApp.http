@@ -1,0 +1,9 @@
+﻿@Keyspeech.PayPal_HostAddress = http://localhost:7030
+
+POST {{Keyspeech.PayPal_HostAddress}}/api/order/create
+Content-Type: application/json
+{
+  "hardwareId": "XXXXX"
+}
+
+###

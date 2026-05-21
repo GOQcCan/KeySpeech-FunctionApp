@@ -1,0 +1,6 @@
+﻿namespace Keyspeech.PayPal.Services;
+
+public interface IEmailService
+{
+    Task SendLicenseAsync(string email, string fullName, byte[] licenseKey);
+}
