@@ -1,4 +1,4 @@
-﻿namespace Keyspeech.PayPal.Models
+﻿namespace Keyspeech.FunctionApp.Models
 {
     public record PayPalOrderResult
     {

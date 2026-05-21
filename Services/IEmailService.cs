@@ -1,4 +1,4 @@
-﻿namespace Keyspeech.PayPal.Services;
+﻿namespace Keyspeech.FunctionApp.Services;
 
 public interface IEmailService
 {

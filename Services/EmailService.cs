@@ -2,7 +2,7 @@
 using System.Net.Mail;
 using System.Text;
 
-namespace Keyspeech.PayPal.Services;
+namespace Keyspeech.FunctionApp.Services;
 
 public class EmailService() : IEmailService
 {

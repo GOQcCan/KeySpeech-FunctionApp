@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 
-namespace Keyspeech.PayPal.Services;
+namespace Keyspeech.FunctionApp.Services;
 
 public class LicenseService(ILogger<LicenseService> logger) : ILicenseService
 {

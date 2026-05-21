@@ -1,5 +1,5 @@
-using Keyspeech.PayPal.Models;
-using Keyspeech.PayPal.Services;
+using Keyspeech.FunctionApp.Models;
+using Keyspeech.FunctionApp.Services;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
@@ -7,7 +7,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Keyspeech.PayPal;
+namespace Keyspeech.FunctionApp;
 
 public class PayPalFunction(
     ILogger<PayPalFunction> logger,

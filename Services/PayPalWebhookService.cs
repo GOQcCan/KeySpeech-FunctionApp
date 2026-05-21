@@ -1,4 +1,4 @@
-﻿using Keyspeech.PayPal.Models;
+﻿using Keyspeech.FunctionApp.Models;
 using Microsoft.Extensions.Logging;
 using PaypalServerSdk.Standard;
 using PaypalServerSdk.Standard.Controllers;
@@ -10,7 +10,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Environment = System.Environment;
 
-namespace Keyspeech.PayPal.Services;
+namespace Keyspeech.FunctionApp.Services;
 
 public class PayPalWebhookService : IPayPalWebhookService
 {

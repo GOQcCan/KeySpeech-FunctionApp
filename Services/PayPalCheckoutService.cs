@@ -1,11 +1,11 @@
-﻿using Keyspeech.PayPal.Models;
+﻿using Keyspeech.FunctionApp.Models;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Keyspeech.PayPal.Services;
+namespace Keyspeech.FunctionApp.Services;
 
 public class PayPalCheckoutService(
     IHttpClientFactory httpClientFactory,

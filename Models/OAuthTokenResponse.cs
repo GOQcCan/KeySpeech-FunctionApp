@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Keyspeech.PayPal.Models;
+namespace Keyspeech.FunctionApp.Models;
 
 sealed record OAuthTokenResponse(
     [property: JsonPropertyName("access_token")] string AccessToken,

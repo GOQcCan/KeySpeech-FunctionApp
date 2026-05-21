@@ -1,4 +1,4 @@
-﻿namespace Keyspeech.PayPal.Models;
+﻿namespace Keyspeech.FunctionApp.Models;
 
 /// <summary>Détails d'une capture PayPal confirmée.</summary>
 public record CaptureDetails(

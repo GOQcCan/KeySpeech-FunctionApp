@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Keyspeech.PayPal.Models
+namespace Keyspeech.FunctionApp.Models
 {
     internal record CreateOrderRequest
     {

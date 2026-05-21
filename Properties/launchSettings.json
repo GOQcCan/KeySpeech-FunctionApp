@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "Keyspeech.PayPal": {
+    "Keyspeech.FunctionApp": {
       "commandName": "Project",
       "commandLineArgs": "--port 7030",
       "launchBrowser": false

@@ -1,6 +1,6 @@
-﻿using Keyspeech.PayPal.Models;
+﻿using Keyspeech.FunctionApp.Models;
 
-namespace Keyspeech.PayPal.Services;
+namespace Keyspeech.FunctionApp.Services;
 
 public interface IPayPalWebhookService
 {
