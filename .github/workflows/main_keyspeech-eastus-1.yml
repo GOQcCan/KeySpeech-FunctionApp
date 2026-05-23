@@ -34,7 +34,7 @@ jobs:
       - name: 'Resolve Project Dependencies Using Dotnet'
         shell: bash
         run: |
-          dotnet build '${{ env.AZURE_FUNCTIONAPP_PROJECT_PATH }}' --configuration Release --output ./output
+          dotnet build --configuration Release --output ./output
 
       - name: Login to Azure
         uses: azure/login@v2
