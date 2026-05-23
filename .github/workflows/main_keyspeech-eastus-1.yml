@@ -11,12 +11,13 @@ on:
 
 env:
   AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'
-  AZURE_FUNCTIONAPP_PROJECT_PATH: 'Keyspeech.PayPal/Keyspeech.PayPal.csproj'
+  AZURE_FUNCTIONAPP_PROJECT_PATH: 'KeySpeech.FunctionApp.csproj'
   DOTNET_VERSION: '8.0.x'
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment: PROD
     permissions:
       id-token: write #This is required for requesting the JWT
       contents: read #This is required for actions/checkout
@@ -38,9 +39,9 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_6C2D7C55C2F34F2AB27B8BF30049A7F7 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_ABC538119BCC4175BB1E9FA71B99787F }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_DC3E42181E9048F989D5A8D602B0DB44 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID }}
 
       - name: 'Run Azure Functions Action'
         uses: Azure/functions-action@v1
