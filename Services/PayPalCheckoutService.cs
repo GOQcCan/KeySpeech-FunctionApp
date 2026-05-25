@@ -1,5 +1,6 @@
 ﻿using Keyspeech.FunctionApp.Models;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using PaypalServerSdk.Standard.Models;
 using System.Net.Http.Headers;
 using System.Text;
@@ -56,7 +57,7 @@ public class PayPalCheckoutService(
         var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/v2/checkout/orders")
         {
             Content = new StringContent(
-                JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, "application/json")
+                System.Text.Json.JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, "application/json")
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         request.Headers.Add("PayPal-Request-Id", Guid.NewGuid().ToString());
@@ -64,7 +65,7 @@ public class PayPalCheckoutService(
         var response = await http.SendAsync(request);
         response.EnsureSuccessStatusCode();
 
-        var order = JsonSerializer.Deserialize<PayPalOrderResponse>(
+        var order = System.Text.Json.JsonSerializer.Deserialize<PayPalOrderResponse>(
             await response.Content.ReadAsStringAsync(), JsonOptions)!;
 
         var approvalUrl = order.Links.FirstOrDefault(l => l.Rel == "approve")?.Href
@@ -94,8 +95,8 @@ public class PayPalCheckoutService(
         var response = await http.SendAsync(request);
         response.EnsureSuccessStatusCode();
 
-        var order = JsonSerializer.Deserialize<CaptureOrderResponse>(
-        await response.Content.ReadAsStringAsync(), JsonOptions)!;
+        var json = await response.Content.ReadAsStringAsync();
+        var order = JsonConvert.DeserializeObject<Order>(json)!;
 
         PurchaseUnit? unit = order.PurchaseUnits?.FirstOrDefault();
         OrdersCapture? capture = unit?.Payments?.Captures?.FirstOrDefault();
@@ -103,7 +104,7 @@ public class PayPalCheckoutService(
         return new PayPalCaptureResult
         {
             OrderId = order.Id ?? string.Empty,
-            Status = order.Status ?? string.Empty,
+            Status = order.Status?.ToString() ?? string.Empty,
             HardwareId = unit?.CustomId ?? string.Empty,
             CaptureId = capture?.Id ?? string.Empty,
             Amount = capture?.Amount?.MValue ?? string.Empty,
@@ -128,7 +129,7 @@ public class PayPalCheckoutService(
         req.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
 
         var res = await http.SendAsync(req);
-        var token = JsonSerializer.Deserialize<OAuthResponse>(
+        var token = System.Text.Json.JsonSerializer.Deserialize<OAuthResponse>(
             await res.Content.ReadAsStringAsync(), JsonOptions)!;
 
         return token.AccessToken;
