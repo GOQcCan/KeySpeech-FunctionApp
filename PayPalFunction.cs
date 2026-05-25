@@ -123,7 +123,7 @@ public class PayPalFunction(
         {
             logger.LogError(ex, "Erreur lors de la capture : {OrderId}", orderId);
             var error = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await error.WriteStringAsync("Erreur lors de la capture");
+            await error.WriteStringAsync("Erreur lors de la capture : " + ex.Message);
             return error;
         }
     }
