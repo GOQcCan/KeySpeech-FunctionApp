@@ -3,6 +3,7 @@ using Keyspeech.FunctionApp.Services;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
+using PaypalServerSdk.Standard.Models;
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -58,7 +59,22 @@ public class PayPalFunction(
                 return req.CreateResponse(HttpStatusCode.OK);
             }
 
-            await HandlePaymentCompleted(evt.Resource, captureId, hardwareId);
+            // Extraire l'order_id depuis le resource du webhook
+            string? orderId = null;
+            if (evt.Resource.TryGetProperty("supplementary_data", out var sup) &&
+                sup.TryGetProperty("related_ids", out var rel) &&
+                rel.TryGetProperty("order_id", out var orderIdProp))
+            {
+                orderId = orderIdProp.GetString();
+            }
+
+            if (string.IsNullOrWhiteSpace(orderId))
+            {
+                logger.LogWarning("orderId manquant pour la capture {Id}", captureId);
+                return req.CreateResponse(HttpStatusCode.OK);
+            }
+
+            await HandlePaymentCompleted(orderId, captureId, hardwareId);
         }
         else
         {
@@ -97,7 +113,6 @@ public class PayPalFunction(
     public async Task<HttpResponseData> Capture(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "checkout/capture")] HttpRequestData req)
     {
-        // "token" = orderId envoyé par PayPal dans le return_url
         string? orderId = req.Query["token"];
 
         if (string.IsNullOrEmpty(orderId))
@@ -134,13 +149,13 @@ public class PayPalFunction(
         {
             logger.LogError(ex, "Erreur lors de la capture : {OrderId}", orderId);
             var error = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await error.WriteStringAsync("Erreur lors de la capture : " + ex.Message + Environment.NewLine + ex.StackTrace);
+            await error.WriteStringAsync("Erreur lors de la capture");
             return error;
         }
     }
 
     private async Task HandlePaymentCompleted(
-        JsonElement resource,
+        string orderId,
         string captureId,
         string hardwareId)
     {
@@ -157,13 +172,31 @@ public class PayPalFunction(
         }
 
         // 2. Extraire les infos du client depuis le payload webhook
-        var payerInfo = resource
-            .GetProperty("payer")
-            .GetProperty("payer_info");
+        var order = await checkoutService.GetOrderAsync(orderId);
+        string email = string.Empty;
+        string firstName = string.Empty;
+        string lastName = string.Empty;
 
-        var email = payerInfo.GetProperty("email").GetString()!;
-        var firstName = payerInfo.GetProperty("first_name").GetString()!;
-        var lastName = payerInfo.GetProperty("last_name").GetString()!;
+        if (order.TryGetProperty("payer", out var payer))
+        {
+            email = payer.TryGetProperty("email_address", out var e)
+                        ? e.GetString()! : string.Empty;
+
+            if (string.IsNullOrEmpty(email))
+            {
+                logger.LogWarning("email manquant pour la capture {Id}", captureId);
+                return;
+            }
+
+            if (payer.TryGetProperty("name", out var name))
+            {
+                firstName = name.TryGetProperty("given_name", out var fn)
+                            ? fn.GetString()! : string.Empty;
+                lastName = name.TryGetProperty("surname", out var ln)
+                            ? ln.GetString()! : string.Empty;
+            }
+        }
+
         var fullName = $"{firstName} {lastName}";
 
         logger.LogInformation(

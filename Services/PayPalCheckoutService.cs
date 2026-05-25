@@ -112,6 +112,28 @@ public class PayPalCheckoutService(
         };
     }
 
+    public async Task<JsonElement> GetOrderAsync(string orderId)
+    {
+        HttpClient http = httpClientFactory.CreateClient("PayPal");
+        bool isSandbox = Env("PAYPAL_SANDBOX") != "false";
+        string baseUrl = isSandbox ? Env("PAYPAL_SANDBOX_URL")! : Env("PAYPAL_PRODUCTION_URL")!;
+        string accessToken = await GetAccessTokenAsync(http, baseUrl,
+            Env("PAYPAL_CLIENT_ID")!, Env("PAYPAL_CLIENT_SECRET")!);
+
+        var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"{baseUrl}/v2/checkout/orders/{orderId}");
+
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var response = await http.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync();
+        return System.Text.Json.JsonSerializer.Deserialize<JsonElement>(json);
+    }
+
     private static async Task<string> GetAccessTokenAsync(
         HttpClient http, string baseUrl, string clientId, string secret)
     {
