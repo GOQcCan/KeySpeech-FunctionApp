@@ -112,12 +112,23 @@ public class PayPalFunction(
         {
             var result = await checkoutService.CaptureOrderAsync(orderId);
 
-            logger.LogInformation("Paiement capturé : {OrderId} — Status : {Status}",
-                orderId, result.Status);
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            response.Headers.Add("Content-Type", "text/html; charset=utf-8");
 
-            var ok = req.CreateResponse(HttpStatusCode.OK);
-            await ok.WriteAsJsonAsync(result);
-            return ok;
+            await response.WriteStringAsync(result.Status == "Completed" ? """
+                <html><body style="font-family:sans-serif;text-align:center;padding:50px">
+                    <h1>✅ Paiement réussi !</h1>
+                    <p>Votre licence KeySpeech est en cours d'activation.</p>
+                    <p>Vous pouvez fermer cette fenêtre.</p>
+                </body></html>
+                """ : """
+                <html><body style="font-family:sans-serif;text-align:center;padding:50px">
+                    <h1>❌ Paiement échoué</h1>
+                    <p>Veuillez réessayer.</p>
+                </body></html>
+                """);
+
+            return response;
         }
         catch (Exception ex)
         {
