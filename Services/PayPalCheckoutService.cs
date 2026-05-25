@@ -105,7 +105,7 @@ public class PayPalCheckoutService(
         {
             OrderId = order.Id ?? string.Empty,
             Status = order.Status?.ToString() ?? string.Empty,
-            HardwareId = unit?.CustomId ?? string.Empty,
+            HardwareId = capture?.CustomId ?? string.Empty,
             CaptureId = capture?.Id ?? string.Empty,
             Amount = capture?.Amount?.MValue ?? string.Empty,
             Currency = capture?.Amount?.CurrencyCode ?? string.Empty
