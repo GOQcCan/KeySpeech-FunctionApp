@@ -93,6 +93,41 @@ public class PayPalFunction(
         return response;
     }
 
+    [Function("PayPalCapture")]
+    public async Task<HttpResponseData> Capture(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "checkout/capture")] HttpRequestData req)
+    {
+        // "token" = orderId envoyé par PayPal dans le return_url
+        string? orderId = req.Query["token"];
+
+        if (string.IsNullOrEmpty(orderId))
+        {
+            logger.LogWarning("Capture appelée sans token");
+            var bad = req.CreateResponse(HttpStatusCode.BadRequest);
+            await bad.WriteStringAsync("token manquant");
+            return bad;
+        }
+
+        try
+        {
+            var result = await checkoutService.CaptureOrderAsync(orderId);
+
+            logger.LogInformation("Paiement capturé : {OrderId} — Status : {Status}",
+                orderId, result.Status);
+
+            var ok = req.CreateResponse(HttpStatusCode.OK);
+            await ok.WriteAsJsonAsync(result);
+            return ok;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Erreur lors de la capture : {OrderId}", orderId);
+            var error = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await error.WriteStringAsync("Erreur lors de la capture");
+            return error;
+        }
+    }
+
     private async Task HandlePaymentCompleted(
         JsonElement resource,
         string captureId,

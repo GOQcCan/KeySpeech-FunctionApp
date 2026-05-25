@@ -41,13 +41,14 @@ public class PayPalCheckoutService(
                 {
                     amount = new { currency_code = currency, value = price },
                     description = "Licence KeySpeech",
-                    custom_id = hardwareId    // ← transmis au webhook
+                    custom_id = hardwareId
                 }
             },
             application_context = new
             {
                 brand_name = "KeySpeech",
-                user_action = "PAY_NOW"
+                user_action = "PAY_NOW",
+                return_url = "https://keyspeech-eastus-1.azurewebsites.net/api/checkout/capture"
             }
         };
 
@@ -71,6 +72,33 @@ public class PayPalCheckoutService(
         logger.LogInformation("Commande créée : {OrderId}", order.Id);
 
         return new PayPalOrderResult { OrderId = order.Id, ApprovalUrl = approvalUrl };
+    }
+
+    public async Task<PayPalCaptureResult> CaptureOrderAsync(string orderId)
+    {
+        HttpClient http = httpClientFactory.CreateClient("PayPal");
+        bool isSandbox = Env("PAYPAL_SANDBOX") != "false";
+        string baseUrl = isSandbox ? Env("PAYPAL_SANDBOX_URL")! : Env("PAYPAL_PRODUCTION_URL")!;
+        string accessToken = await GetAccessTokenAsync(http, baseUrl,
+            Env("PAYPAL_CLIENT_ID")!, Env("PAYPAL_CLIENT_SECRET")!);
+
+        var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"{baseUrl}/v2/checkout/orders/{orderId}/capture")
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json")
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var response = await http.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        logger.LogInformation("Paiement capturé : {OrderId}", orderId);
+
+        var result = JsonSerializer.Deserialize<PayPalCaptureResponse>(
+            await response.Content.ReadAsStringAsync(), JsonOptions)!;
+
+        return new PayPalCaptureResult { Status = result.Status };
     }
 
     private static async Task<string> GetAccessTokenAsync(
