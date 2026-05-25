@@ -94,18 +94,16 @@ public class PayPalCheckoutService(
         var response = await http.SendAsync(request);
         response.EnsureSuccessStatusCode();
 
-        var order = JsonSerializer.Deserialize<Order>(
+        var order = JsonSerializer.Deserialize<CaptureOrderResponse>(
         await response.Content.ReadAsStringAsync(), JsonOptions)!;
 
-        // Order contient bien PurchaseUnits
         PurchaseUnit? unit = order.PurchaseUnits?.FirstOrDefault();
-        PaymentCollection? payments = unit?.Payments;
-        OrdersCapture? capture = payments?.Captures?.FirstOrDefault();
+        OrdersCapture? capture = unit?.Payments?.Captures?.FirstOrDefault();
 
         return new PayPalCaptureResult
         {
             OrderId = order.Id ?? string.Empty,
-            Status = order.Status?.ToString() ?? string.Empty,
+            Status = order.Status ?? string.Empty,
             HardwareId = unit?.CustomId ?? string.Empty,
             CaptureId = capture?.Id ?? string.Empty,
             Amount = capture?.Amount?.MValue ?? string.Empty,
