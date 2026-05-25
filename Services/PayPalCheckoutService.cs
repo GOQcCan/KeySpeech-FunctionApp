@@ -1,5 +1,6 @@
 ﻿using Keyspeech.FunctionApp.Models;
 using Microsoft.Extensions.Logging;
+using PaypalServerSdk.Standard.Models;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -83,8 +84,8 @@ public class PayPalCheckoutService(
             Env("PAYPAL_CLIENT_ID")!, Env("PAYPAL_CLIENT_SECRET")!);
 
         var request = new HttpRequestMessage(
-            HttpMethod.Post,
-            $"{baseUrl}/v2/checkout/orders/{orderId}/capture")
+        HttpMethod.Post,
+        $"{baseUrl}/v2/checkout/orders/{orderId}/capture")
         {
             Content = new StringContent("{}", Encoding.UTF8, "application/json")
         };
@@ -93,12 +94,23 @@ public class PayPalCheckoutService(
         var response = await http.SendAsync(request);
         response.EnsureSuccessStatusCode();
 
-        logger.LogInformation("Paiement capturé : {OrderId}", orderId);
+        var order = JsonSerializer.Deserialize<Order>(
+        await response.Content.ReadAsStringAsync(), JsonOptions)!;
 
-        var result = JsonSerializer.Deserialize<PayPalCaptureResponse>(
-            await response.Content.ReadAsStringAsync(), JsonOptions)!;
+        // Order contient bien PurchaseUnits
+        PurchaseUnit? unit = order.PurchaseUnits?.FirstOrDefault();
+        PaymentCollection? payments = unit?.Payments;
+        OrdersCapture? capture = payments?.Captures?.FirstOrDefault();
 
-        return new PayPalCaptureResult { Status = result.Status };
+        return new PayPalCaptureResult
+        {
+            OrderId = order.Id ?? string.Empty,
+            Status = order.Status?.ToString() ?? string.Empty,
+            HardwareId = unit?.CustomId ?? string.Empty,
+            CaptureId = capture?.Id ?? string.Empty,
+            Amount = capture?.Amount?.MValue ?? string.Empty,
+            Currency = capture?.Amount?.CurrencyCode ?? string.Empty
+        };
     }
 
     private static async Task<string> GetAccessTokenAsync(
