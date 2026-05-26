@@ -1,35 +1,73 @@
+using Keyspeech.FunctionApp.Configuration;
+using Keyspeech.FunctionApp.Models;
 using Keyspeech.FunctionApp.Services;
+using Keyspeech.FunctionApp.Validation;
+using Keyspeech.FunctionApp.Webhooks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using PaypalServerSdk.Standard;
 using PaypalServerSdk.Standard.Authentication;
-using static System.Net.Mime.MediaTypeNames;
-using Environment = System.Environment;
+using Polly;
+using Polly.Extensions.Http;
 
 var host = new HostBuilder()
     .ConfigureFunctionsWebApplication()
     .ConfigureServices(services =>
     {
-        // Enregistrement du client PayPalServerSDK officiel
+        // ========== Configurations ==========
+        var paypalConfig = PayPalConfiguration.FromEnvironment();
+        var licenseConfig = LicenseConfiguration.FromEnvironment();
+        var emailConfig = EmailConfiguration.FromEnvironment();
+
+        services.AddSingleton(paypalConfig);
+        services.AddSingleton(licenseConfig);
+        services.AddSingleton(emailConfig);
+
+        // ========== PayPal SDK Client ==========
         services.AddSingleton<PaypalServerSdkClient>(sp =>
         {
-            var clientId = Environment.GetEnvironmentVariable("PAYPAL_CLIENT_ID")!;
-            var clientSecret = Environment.GetEnvironmentVariable("PAYPAL_CLIENT_SECRET")!;
-
             return new PaypalServerSdkClient.Builder()
                 .ClientCredentialsAuth(
-                    new ClientCredentialsAuthModel.Builder(clientId, clientSecret)
+                    new ClientCredentialsAuthModel.Builder(
+                        paypalConfig.ClientId,
+                        paypalConfig.ClientSecret)
                         .Build())
-                // Sandbox pour les tests
-                // Production : PaypalServerSdk.Standard.Environment.Production
-                .Environment(PaypalServerSdk.Standard.Environment.Sandbox)
+                .Environment(paypalConfig.IsSandbox
+                    ? PaypalServerSdk.Standard.Environment.Sandbox
+                    : PaypalServerSdk.Standard.Environment.Production)
                 .Build();
         });
-        services.AddHttpClient("PayPal");
+
+        // ========== Polly Retry Policy ==========
+        var retryPolicy = HttpPolicyExtensions
+            .HandleTransientHttpError()
+            .WaitAndRetryAsync(3, retryAttempt =>
+                TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+
+        // ========== HTTP Clients avec Polly ==========
+        services.AddHttpClient("PayPal")
+            .AddPolicyHandler(retryPolicy);
+
+        services.AddHttpClient<IPayPalWebhookService, PayPalWebhookService>()
+            .AddPolicyHandler(retryPolicy);
+
+        // ========== Services Core ==========
         services.AddSingleton<IPayPalCheckoutService, PayPalCheckoutService>();
-        services.AddHttpClient<IPayPalWebhookService, PayPalWebhookService>();
+        services.AddSingleton<IPayPalOrderService, PayPalCheckoutService>();
+        services.AddSingleton<IPayPalCaptureService, PayPalCheckoutService>();
         services.AddSingleton<ILicenseService, LicenseService>();
         services.AddSingleton<IEmailService, EmailService>();
+
+        // ========== Orchestration ==========
+        services.AddSingleton<IOrderProcessingService, OrderProcessingService>();
+
+        // ========== Parsing & Validation ==========
+        services.AddSingleton<IPayPalEventParser, PayPalEventParser>();
+        services.AddSingleton<IValidator<CreateOrderRequest>, CreateOrderRequestValidator>();
+
+        // ========== Webhook Pattern Strategy ==========
+        services.AddSingleton<IWebhookEventHandler, PaymentCaptureCompletedHandler>();
+        services.AddSingleton<IWebhookEventDispatcher, WebhookEventDispatcher>();
     })
     .Build();
 

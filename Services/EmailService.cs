@@ -1,24 +1,24 @@
-﻿using System.Net;
+﻿using Keyspeech.FunctionApp.Configuration;
+using System.Net;
 using System.Net.Mail;
 using System.Text;
 
 namespace Keyspeech.FunctionApp.Services;
 
-public class EmailService() : IEmailService
+public class EmailService(EmailConfiguration config) : IEmailService
 {
     public async Task SendLicenseAsync(
         string email, string fullName, byte[] licenseKey)
     {
-        string userName = Env("GMAIL_ADDRESS");
         using MailMessage msg = new();
-        using SmtpClient smtpClient = new("smtp.gmail.com")
+        using SmtpClient smtpClient = new(config.SmtpHost)
         {
-            Port = 587,
+            Port = config.SmtpPort,
             Credentials = new NetworkCredential(
-                userName,
-                Env("GMAIL_APP_PASSWORD")
+                config.SenderAddress,
+                config.SenderPassword
             ),
-            EnableSsl = true,
+            EnableSsl = config.EnableSsl,
         };
         StringBuilder body = new();
 
@@ -27,22 +27,17 @@ public class EmailService() : IEmailService
         using MemoryStream ms = new(licenseKey);
         Attachment data = new(ms, "keyspeech.license");
         msg.Attachments.Add(data);
-        msg.Subject = "KeySpeech Full license file";
+        msg.Subject = config.SubjectTemplate;
         body.Append("Thank you to buy KeySpeech License.<br /><br />This is your Full license file. Please move the license file in the same location of keyspeech.exe<br /><br />");
 
         body.Append("Best regards,<br /><br />KeySpeech Support");
 
-        msg.From = new MailAddress(userName);
-        msg.Bcc.Add(userName);
+        msg.From = new MailAddress(config.SenderAddress);
+        msg.Bcc.Add(config.SenderAddress);
         msg.To.Add(email);
         msg.IsBodyHtml = true;
         msg.Body = body.ToString();
 
         await smtpClient.SendMailAsync(msg);
     }
-
-    private static string Env(string key) =>
-        Environment.GetEnvironmentVariable(key)
-        ?? throw new InvalidOperationException(
-            $"Variable d'environnement manquante : {key}");
 }

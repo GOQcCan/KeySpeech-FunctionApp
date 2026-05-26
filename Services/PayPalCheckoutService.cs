@@ -1,4 +1,5 @@
-﻿using Keyspeech.FunctionApp.Models;
+﻿using Keyspeech.FunctionApp.Configuration;
+using Keyspeech.FunctionApp.Models;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using PaypalServerSdk.Standard.Models;
@@ -11,29 +12,26 @@ namespace Keyspeech.FunctionApp.Services;
 
 public class PayPalCheckoutService(
     IHttpClientFactory httpClientFactory,
-    ILogger<PayPalCheckoutService> logger) : IPayPalCheckoutService
+    ILogger<PayPalCheckoutService> logger,
+    PayPalConfiguration config) : IPayPalCheckoutService, IPayPalOrderService, IPayPalCaptureService
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNameCaseInsensitive = true,                          // pour la désérialisation
-        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,      // pour la sérialisation (.NET 8+)
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
     public async Task<PayPalOrderResult> CheckoutOrdersAsync(string hardwareId)
     {
-        // ✅ Tous les settings viennent d'Azure App Configuration
-        string clientId = Env("PAYPAL_CLIENT_ID")!;
-        string secret = Env("PAYPAL_CLIENT_SECRET")!;
-        string price = Env("PAYPAL_PRICE")!;
-        string currency = Env("PAYPAL_CURRENCY")!;
+        return await CreateOrderAsync(hardwareId);
+    }
+
+    public async Task<PayPalOrderResult> CreateOrderAsync(string hardwareId)
+    {
         HttpClient http = httpClientFactory.CreateClient("PayPal");
-        // Sandbox ou Production selon l'environnement
-        bool isSandbox = Env("PAYPAL_SANDBOX") != "false";
-        string baseUrl = isSandbox
-            ? Env("PAYPAL_SANDBOX_URL")!
-            : Env("PAYPAL_PRODUCTION_URL")!;
-        string accessToken = await GetAccessTokenAsync(http, baseUrl, clientId, secret);
+        string accessToken = await GetAccessTokenAsync(http, config.BaseUrl, config.ClientId, config.ClientSecret);
+
         var payload = new
         {
             intent = "CAPTURE",
@@ -41,7 +39,7 @@ public class PayPalCheckoutService(
             {
                 new
                 {
-                    amount = new { currency_code = currency, value = price },
+                    amount = new { currency_code = config.Currency, value = config.Price },
                     description = "Licence KeySpeech",
                     custom_id = hardwareId
                 }
@@ -50,11 +48,11 @@ public class PayPalCheckoutService(
             {
                 brand_name = "KeySpeech",
                 user_action = "PAY_NOW",
-                return_url = "https://keyspeech-eastus-1.azurewebsites.net/api/checkout/capture"
+                return_url = config.ReturnUrl
             }
         };
 
-        var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/v2/checkout/orders")
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{config.BaseUrl}/v2/checkout/orders")
         {
             Content = new StringContent(
                 System.Text.Json.JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, "application/json")
@@ -79,14 +77,11 @@ public class PayPalCheckoutService(
     public async Task<PayPalCaptureResult> CaptureOrderAsync(string orderId)
     {
         HttpClient http = httpClientFactory.CreateClient("PayPal");
-        bool isSandbox = Env("PAYPAL_SANDBOX") != "false";
-        string baseUrl = isSandbox ? Env("PAYPAL_SANDBOX_URL")! : Env("PAYPAL_PRODUCTION_URL")!;
-        string accessToken = await GetAccessTokenAsync(http, baseUrl,
-            Env("PAYPAL_CLIENT_ID")!, Env("PAYPAL_CLIENT_SECRET")!);
+        string accessToken = await GetAccessTokenAsync(http, config.BaseUrl, config.ClientId, config.ClientSecret);
 
         var request = new HttpRequestMessage(
         HttpMethod.Post,
-        $"{baseUrl}/v2/checkout/orders/{orderId}/capture")
+        $"{config.BaseUrl}/v2/checkout/orders/{orderId}/capture")
         {
             Content = new StringContent("{}", Encoding.UTF8, "application/json")
         };
@@ -115,14 +110,11 @@ public class PayPalCheckoutService(
     public async Task<JsonElement> GetOrderAsync(string orderId)
     {
         HttpClient http = httpClientFactory.CreateClient("PayPal");
-        bool isSandbox = Env("PAYPAL_SANDBOX") != "false";
-        string baseUrl = isSandbox ? Env("PAYPAL_SANDBOX_URL")! : Env("PAYPAL_PRODUCTION_URL")!;
-        string accessToken = await GetAccessTokenAsync(http, baseUrl,
-            Env("PAYPAL_CLIENT_ID")!, Env("PAYPAL_CLIENT_SECRET")!);
+        string accessToken = await GetAccessTokenAsync(http, config.BaseUrl, config.ClientId, config.ClientSecret);
 
         var request = new HttpRequestMessage(
             HttpMethod.Get,
-            $"{baseUrl}/v2/checkout/orders/{orderId}");
+            $"{config.BaseUrl}/v2/checkout/orders/{orderId}");
 
         request.Headers.Authorization =
             new AuthenticationHeaderValue("Bearer", accessToken);
@@ -132,6 +124,37 @@ public class PayPalCheckoutService(
 
         var json = await response.Content.ReadAsStringAsync();
         return System.Text.Json.JsonSerializer.Deserialize<JsonElement>(json);
+    }
+
+    public async Task<OrderDetails> GetOrderDetailsAsync(string orderId)
+    {
+        var order = await GetOrderAsync(orderId);
+
+        string email = string.Empty;
+        string firstName = string.Empty;
+        string lastName = string.Empty;
+
+        if (order.TryGetProperty("payer", out var payer))
+        {
+            email = payer.TryGetProperty("email_address", out var e)
+                        ? e.GetString()! : string.Empty;
+
+            if (payer.TryGetProperty("name", out var name))
+            {
+                firstName = name.TryGetProperty("given_name", out var fn)
+                            ? fn.GetString()! : string.Empty;
+                lastName = name.TryGetProperty("surname", out var ln)
+                            ? ln.GetString()! : string.Empty;
+            }
+        }
+
+        return new OrderDetails
+        {
+            OrderId = orderId,
+            Email = email,
+            FirstName = firstName,
+            LastName = lastName
+        };
     }
 
     private static async Task<string> GetAccessTokenAsync(
@@ -156,10 +179,4 @@ public class PayPalCheckoutService(
 
         return token.AccessToken;
     }
-
-    /// <summary>Lit une variable d'environnement obligatoire.</summary>
-    private static string Env(string key) =>
-        Environment.GetEnvironmentVariable(key)
-        ?? throw new InvalidOperationException(
-            $"Variable d'environnement manquante : {key}");
 }
