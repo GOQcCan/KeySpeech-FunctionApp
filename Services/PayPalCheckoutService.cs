@@ -2,6 +2,8 @@
 using Keyspeech.FunctionApp.Models;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using PaypalServerSdk.Standard;
+using PaypalServerSdk.Standard.Http.Response;
 using PaypalServerSdk.Standard.Models;
 using System.Net.Http.Headers;
 using System.Text;
@@ -13,7 +15,8 @@ namespace Keyspeech.FunctionApp.Services;
 public class PayPalCheckoutService(
     IHttpClientFactory httpClientFactory,
     ILogger<PayPalCheckoutService> logger,
-    PayPalConfiguration config) : IPayPalCheckoutService, IPayPalOrderService, IPayPalCaptureService
+    PayPalConfiguration config,
+    PaypalServerSdkClient paypalClient) : IPayPalCheckoutService, IPayPalOrderService, IPayPalCaptureService
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -22,56 +25,44 @@ public class PayPalCheckoutService(
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    public async Task<PayPalOrderResult> CheckoutOrdersAsync(string hardwareId)
-    {
-        return await CreateOrderAsync(hardwareId);
-    }
-
     public async Task<PayPalOrderResult> CreateOrderAsync(string hardwareId)
     {
-        HttpClient http = httpClientFactory.CreateClient("PayPal");
-        string accessToken = await GetAccessTokenAsync(http, config.BaseUrl, config.ClientId, config.ClientSecret);
-
-        var payload = new
+        CreateOrderInput createOrderInput = new()
         {
-            intent = "CAPTURE",
-            purchase_units = new[]
+            Body = new OrderRequest
             {
-                new
+                Intent = CheckoutPaymentIntent.Capture,
+                PurchaseUnits =
+                [
+                    new() 
+                    {
+                        Amount = new AmountWithBreakdown
+                        {
+                            CurrencyCode = config.Currency,
+                            MValue = config.Price,
+                        },
+                        Description = "Licence KeySpeech",
+                        CustomId = hardwareId
+                    }
+                ],
+                ApplicationContext = new()
                 {
-                    amount = new { currency_code = config.Currency, value = config.Price },
-                    description = "Licence KeySpeech",
-                    custom_id = hardwareId
+                    BrandName = "KeySpeech",
+                    UserAction = OrderApplicationContextUserAction.PayNow,
+                    ReturnUrl = config.ReturnUrl
                 }
             },
-            application_context = new
-            {
-                brand_name = "KeySpeech",
-                user_action = "PAY_NOW",
-                return_url = config.ReturnUrl
-            }
+            Prefer = "return=minimal"
         };
 
-        var request = new HttpRequestMessage(HttpMethod.Post, $"{config.BaseUrl}/v2/checkout/orders")
-        {
-            Content = new StringContent(
-                System.Text.Json.JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, "application/json")
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        request.Headers.Add("PayPal-Request-Id", Guid.NewGuid().ToString());
+        ApiResponse<Order> result = await paypalClient.OrdersController.CreateOrderAsync(createOrderInput);
 
-        var response = await http.SendAsync(request);
-        response.EnsureSuccessStatusCode();
+        string approvalUrl = result.Data.Links.FirstOrDefault(l => l.Rel == "approve")?.Href
+                                ?? throw new InvalidOperationException("Lien approve manquant");
 
-        var order = System.Text.Json.JsonSerializer.Deserialize<PayPalOrderResponse>(
-            await response.Content.ReadAsStringAsync(), JsonOptions)!;
+        logger.LogInformation("Commande créée : {OrderId}", result.Data.Id);
 
-        var approvalUrl = order.Links.FirstOrDefault(l => l.Rel == "approve")?.Href
-                          ?? throw new InvalidOperationException("Lien approve manquant");
-
-        logger.LogInformation("Commande créée : {OrderId}", order.Id);
-
-        return new PayPalOrderResult { OrderId = order.Id, ApprovalUrl = approvalUrl };
+        return new PayPalOrderResult { OrderId = result.Data.Id, ApprovalUrl = approvalUrl };
     }
 
     public async Task<PayPalCaptureResult> CaptureOrderAsync(string orderId)
