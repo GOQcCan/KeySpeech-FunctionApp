@@ -5,7 +5,6 @@ using Keyspeech.FunctionApp.Webhooks;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
-using PaypalServerSdk.Standard.Models;
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;

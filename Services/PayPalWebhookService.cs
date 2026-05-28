@@ -4,10 +4,9 @@ using Microsoft.Extensions.Logging;
 using PaypalServerSdk.Standard;
 using PaypalServerSdk.Standard.Exceptions;
 using PaypalServerSdk.Standard.Models;
-using System.Net.Http.Headers;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace Keyspeech.FunctionApp.Services;
 
@@ -17,64 +16,39 @@ public class PayPalWebhookService(
     PayPalConfiguration config,
     PaypalServerSdkClient paypalClient) : IPayPalWebhookService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-    };
-
     public async Task<bool> ValidateSignatureAsync(
         IReadOnlyDictionary<string, string> headers,
         string rawBody)
     {
         try
         {
-            string accessToken = await GetAccessTokenAsync();
+            // 1. Construire le message original
+            string transmissionId = headers["paypal-transmission-id"];
+            string transmissionTime = headers["paypal-transmission-time"];
+            string certUrl = headers["paypal-cert-url"];
+            string transmissionSig = headers["paypal-transmission-sig"];
+            string authAlgo = headers["paypal-auth-algo"];
 
-            var payload = new
-            {
-                auth_algo = H(headers, "paypal-auth-algo"),
-                cert_url = H(headers, "paypal-cert-url"),
-                transmission_id = H(headers, "paypal-transmission-id"),
-                transmission_sig = H(headers, "paypal-transmission-sig"),
-                transmission_time = H(headers, "paypal-transmission-time"),
-                webhook_id = config.WebhookId,
-                webhook_event = JsonSerializer.Deserialize<JsonElement>(rawBody, JsonOptions)
-            };
+            // 2. CRC32 du body
+            uint crc32 = BitConverter.ToUInt32(System.IO.Hashing.Crc32.Hash(Encoding.UTF8.GetBytes(rawBody)));
 
-            var request = new HttpRequestMessage(
-                HttpMethod.Post,
-                $"{config.BaseUrl}/v1/notifications/verify-webhook-signature")
-            {
-                Content = new StringContent(
-                    JsonSerializer.Serialize(payload, JsonOptions),
-                    Encoding.UTF8,
-                    "application/json")
-            };
+            // 3. Message à valider
+            string message = $"{transmissionId}|{transmissionTime}|{config.WebhookId}|{crc32}";
 
-            request.Headers.Authorization =
-                new AuthenticationHeaderValue("Bearer", accessToken);
+            // 4. Télécharger le certificat PayPal
+            var certBytes = await httpClient.GetByteArrayAsync(certUrl);
+            var cert = new X509Certificate2(certBytes);
+            var publicKey = cert.GetRSAPublicKey()!;
 
-            var response = await httpClient.SendAsync(request);
+            // 5. Vérifier la signature
+            byte[] signatureBytes = Convert.FromBase64String(transmissionSig);
+            byte[] messageBytes = Encoding.UTF8.GetBytes(message);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                var error = await response.Content.ReadAsStringAsync();
-                logger.LogError(
-                    "Erreur PayPal verify-webhook-signature {Status}: {Body}",
-                    response.StatusCode, error);
-                return false;
-            }
-
-            var json = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<VerifySignatureResponse>(json, JsonOptions);
-
-            logger.LogInformation(
-                "Résultat validation signature : {Status}",
-                result?.VerificationStatus);
-
-            return result?.VerificationStatus == "SUCCESS";
+            return publicKey.VerifyData(
+                messageBytes,
+                signatureBytes,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pkcs1);
         }
         catch (Exception ex)
         {
@@ -136,40 +110,4 @@ public class PayPalWebhookService(
             return null;
         }
     }
-
-    private async Task<string> GetAccessTokenAsync()
-    {
-        var credentials = Convert.ToBase64String(
-            Encoding.UTF8.GetBytes($"{config.ClientId}:{config.ClientSecret}"));
-
-        var request = new HttpRequestMessage(
-            HttpMethod.Post,
-            $"{config.BaseUrl}/v1/oauth2/token")
-        {
-            Content = new FormUrlEncodedContent(
-            [
-                new KeyValuePair<string, string>("grant_type", "client_credentials")
-            ])
-        };
-
-        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
-
-        var response = await httpClient.SendAsync(request);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            var body = await response.Content.ReadAsStringAsync();
-            throw new InvalidOperationException(
-                $"Impossible d'obtenir le token PayPal ({response.StatusCode}): {body}");
-        }
-
-        var json = await response.Content.ReadAsStringAsync();
-        var token = JsonSerializer.Deserialize<OAuthTokenResponse>(json, JsonOptions);
-
-        return token?.AccessToken
-            ?? throw new InvalidOperationException("Token PayPal vide ou invalide");
-    }
-
-    private static string H(IReadOnlyDictionary<string, string> headers, string key) =>
-        headers.TryGetValue(key, out var val) ? val : string.Empty;
 }
