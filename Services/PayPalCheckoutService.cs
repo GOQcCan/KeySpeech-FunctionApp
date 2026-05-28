@@ -1,7 +1,6 @@
 ﻿using Keyspeech.FunctionApp.Configuration;
 using Keyspeech.FunctionApp.Models;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using PaypalServerSdk.Standard;
 using PaypalServerSdk.Standard.Http.Response;
 using PaypalServerSdk.Standard.Models;
@@ -67,30 +66,21 @@ public class PayPalCheckoutService(
 
     public async Task<PayPalCaptureResult> CaptureOrderAsync(string orderId)
     {
-        HttpClient http = httpClientFactory.CreateClient("PayPal");
-        string accessToken = await GetAccessTokenAsync(http, config.BaseUrl, config.ClientId, config.ClientSecret);
-
-        var request = new HttpRequestMessage(
-        HttpMethod.Post,
-        $"{config.BaseUrl}/v2/checkout/orders/{orderId}/capture")
+        CaptureOrderInput captureOrderInput = new()
         {
-            Content = new StringContent("{}", Encoding.UTF8, "application/json")
+            Id = orderId,
+            Prefer = "return=representation",
         };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
-        var response = await http.SendAsync(request);
-        response.EnsureSuccessStatusCode();
+        ApiResponse<Order> result = await paypalClient.OrdersController.CaptureOrderAsync(captureOrderInput);
 
-        var json = await response.Content.ReadAsStringAsync();
-        var order = JsonConvert.DeserializeObject<Order>(json)!;
-
-        PurchaseUnit? unit = order.PurchaseUnits?.FirstOrDefault();
+        PurchaseUnit? unit = result.Data.PurchaseUnits?.FirstOrDefault();
         OrdersCapture? capture = unit?.Payments?.Captures?.FirstOrDefault();
 
         return new PayPalCaptureResult
         {
-            OrderId = order.Id ?? string.Empty,
-            Status = order.Status?.ToString() ?? string.Empty,
+            OrderId = result.Data.Id ?? string.Empty,
+            Status = result.Data.Status?.ToString() ?? string.Empty,
             HardwareId = capture?.CustomId ?? string.Empty,
             CaptureId = capture?.Id ?? string.Empty,
             Amount = capture?.Amount?.MValue ?? string.Empty,
