@@ -30,10 +30,15 @@ It adapts them, expands them, and simplifies your setup.
 
 ### Example:
 
+In this scenario, the words **“Cowboy”**, **“Fury”**, and **“Snake”** are defined as synonyms of the word **“squadron”**.
+
 A single command:
 > “squadron permission to engage”
 
-Automatically becomes:
+can therefore be interpreted dynamically by the system.
+
+KeySpeech will automatically recognize:
+
 - “Cowboy permission to engage”
 - “Fury permission to engage”
 - “Snake permission to engage”
