@@ -25,27 +25,25 @@ Fly. Command. Execute. Without breaking the flow.
 
 ## 🔁 A Smarter Command System
 
-KeySpeech doesn’t just recognize phrases.  
-It adapts them, expands them, and simplifies your setup.
+KeySpeech lets you define dynamic synonyms directly inside your commands — giving you powerful flexibility without extra setup.
 
-### Example:
+In this example, **“Cowboy”**, **“Fury”**, and **“Snake”** are all defined as synonyms of the word **“squadron”**.
 
-In this scenario, the words **“Cowboy”**, **“Fury”**, and **“Snake”** are defined as synonyms of the word **“squadron”**.
+So instead of creating multiple commands, you only need one:
 
-A single command:
 > “squadron permission to engage”
 
-can therefore be interpreted dynamically by the system.
-
-KeySpeech will automatically recognize:
+KeySpeech automatically understands and recognizes:
 
 - “Cowboy permission to engage”
 - “Fury permission to engage”
 - “Snake permission to engage”
 
-✅ Less configuration  
-✅ More flexibility  
-✅ Natural interaction  
+⚡ One command becomes many  
+⚡ Zero duplication in setup  
+⚡ Natural, immersive communication  
+
+This means you can speak the way you want — and KeySpeech adapts instantly.
 
 ---
 
