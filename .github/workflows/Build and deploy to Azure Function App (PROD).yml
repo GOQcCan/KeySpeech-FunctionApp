@@ -12,7 +12,7 @@ on:
 env:
   AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'
   AZURE_FUNCTIONAPP_PROJECT_PATH: 'KeySpeech.FunctionApp/KeySpeech.FunctionApp.csproj'
-  DOTNET_VERSION: '8.0.x'
+  DOTNET_VERSION: '10.0.x'
 
 jobs:
   build-and-deploy:
