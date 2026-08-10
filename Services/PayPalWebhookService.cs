@@ -10,12 +10,30 @@ using System.Text;
 
 namespace Keyspeech.FunctionApp.Services;
 
-public class PayPalWebhookService(
+public partial class PayPalWebhookService(
     HttpClient httpClient,
     ILogger<PayPalWebhookService> logger,
     PayPalConfiguration config,
     PaypalServerSdkClient paypalClient) : IPayPalWebhookService
 {
+    [LoggerMessage(Level = LogLevel.Error, Message = "Exception lors de la validation de signature PayPal")]
+    private partial void LogSignatureValidationException(Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Vérification capture {CaptureId} via SDK officiel")]
+    private partial void LogVerifyingCapture(string captureId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Capture {Id} — statut : {Status} — montant : {Amount} {Currency}")]
+    private partial void LogCaptureDetails(string? id, CaptureStatus? status, string? amount, string? currency);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Capture {Id} ignorée — statut : {Status}")]
+    private partial void LogCaptureIgnored(string? id, CaptureStatus? status);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Erreur SDK PayPal capture {Id}: HTTP {Status} — {Message}")]
+    private partial void LogApiException(Exception ex, string id, int status, string message);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Exception inattendue vérification capture {Id}")]
+    private partial void LogUnexpectedCaptureException(Exception ex, string id);
+
     public async Task<bool> ValidateSignatureAsync(
         IReadOnlyDictionary<string, string> headers,
         string rawBody)
@@ -37,7 +55,7 @@ public class PayPalWebhookService(
 
             // 4. Télécharger le certificat PayPal
             var certBytes = await httpClient.GetByteArrayAsync(certUrl);
-            var cert = new X509Certificate2(certBytes);
+            var cert = X509CertificateLoader.LoadCertificate(certBytes);
             var publicKey = cert.GetRSAPublicKey()!;
 
             // 5. Vérifier la signature
@@ -52,7 +70,7 @@ public class PayPalWebhookService(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Exception lors de la validation de signature PayPal");
+            LogSignatureValidationException(ex);
             return false;
         }
     }
@@ -61,8 +79,7 @@ public class PayPalWebhookService(
     {
         try
         {
-            logger.LogInformation(
-                "Vérification capture {CaptureId} via SDK officiel", captureId);
+            LogVerifyingCapture(captureId);
 
             var input = new GetCapturedPaymentInput
             {
@@ -74,8 +91,7 @@ public class PayPalWebhookService(
 
             var capture = apiResponse.Data;
 
-            logger.LogInformation(
-                "Capture {Id} — statut : {Status} — montant : {Amount} {Currency}",
+            LogCaptureDetails(
                 capture.Id,
                 capture.Status,
                 capture.Amount?.MValue,
@@ -83,9 +99,7 @@ public class PayPalWebhookService(
 
             if (capture.Status != CaptureStatus.Completed)
             {
-                logger.LogWarning(
-                    "Capture {Id} ignorée — statut : {Status}",
-                    capture.Id, capture.Status);
+                LogCaptureIgnored(capture.Id, capture.Status);
                 return null;
             }
 
@@ -98,15 +112,12 @@ public class PayPalWebhookService(
         }
         catch (ApiException ex)
         {
-            logger.LogError(ex,
-                "Erreur SDK PayPal capture {Id}: HTTP {Status} — {Message}",
-                captureId, ex.ResponseCode, ex.Message);
+            LogApiException(ex, captureId, ex.ResponseCode, ex.Message);
             return null;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
-                "Exception inattendue vérification capture {Id}", captureId);
+            LogUnexpectedCaptureException(ex, captureId);
             return null;
         }
     }
