@@ -3,11 +3,14 @@ using Microsoft.Extensions.Logging;
 
 namespace Keyspeech.FunctionApp.Services;
 
-public class LicenseService(ILogger<LicenseService> logger, LicenseConfiguration config) : ILicenseService
+public partial class LicenseService(ILogger<LicenseService> logger, LicenseConfiguration config) : ILicenseService
 {
+    [LoggerMessage(Level = LogLevel.Information, Message = "Génération de licence pour {HardwareID}")]
+    private partial void LogGeneratingLicense(string hardwareID);
+
     public byte[] GenerateLicense(string hardwareID)
     {
-        logger.LogInformation("Génération de licence pour {HardwareID}", hardwareID);
+        LogGeneratingLicense(hardwareID);
 
         LicenseGenerator licensegen = new();
         licensegen.LoadMasterKeyFromString(config.MasterKey);

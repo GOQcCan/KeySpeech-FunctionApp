@@ -11,7 +11,7 @@ using System.Text.Json.Serialization;
 
 namespace Keyspeech.FunctionApp;
 
-public class PayPalFunction(
+public partial class PayPalFunction(
     ILogger<PayPalFunction> logger,
     IPayPalWebhookService webhookService,
     IPayPalOrderService orderService,
@@ -20,6 +20,21 @@ public class PayPalFunction(
     IWebhookEventDispatcher eventDispatcher,
     IValidator<CreateOrderRequest> createOrderValidator)
 {
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Signature invalide — requête rejetée")]
+    private partial void LogInvalidSignature();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Création commande pour HW: {HardwareId}")]
+    private partial void LogCreatingOrder(string hardwareId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Erreur lors de la création de la commande")]
+    private partial void LogOrderCreationError(Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Capture appelée sans token")]
+    private partial void LogCaptureCalledWithoutToken();
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Erreur lors de la capture : {OrderId}")]
+    private partial void LogCaptureError(Exception ex, string orderId);
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -43,7 +58,7 @@ public class PayPalFunction(
 
         if (!isValid)
         {
-            logger.LogWarning("Signature invalide — requête rejetée");
+            LogInvalidSignature();
             return req.CreateResponse(HttpStatusCode.Unauthorized);
         }
 
@@ -78,7 +93,7 @@ public class PayPalFunction(
                 return bad;
             }
 
-            logger.LogInformation("Création commande pour HW: {HardwareId}", request!.HardwareId);
+            LogCreatingOrder(request!.HardwareId);
 
             var result = await orderService.CreateOrderAsync(request.HardwareId);
 
@@ -88,7 +103,7 @@ public class PayPalFunction(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Erreur lors de la création de la commande");
+            LogOrderCreationError(ex);
             var error = req.CreateResponse(HttpStatusCode.InternalServerError);
             await error.WriteStringAsync("Erreur lors de la création de la commande");
             return error;
@@ -103,7 +118,7 @@ public class PayPalFunction(
 
         if (string.IsNullOrEmpty(orderId))
         {
-            logger.LogWarning("Capture appelée sans token");
+            LogCaptureCalledWithoutToken();
             var bad = req.CreateResponse(HttpStatusCode.BadRequest);
             await bad.WriteStringAsync("token manquant");
             return bad;
@@ -133,7 +148,7 @@ public class PayPalFunction(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Erreur lors de la capture : {OrderId}", orderId);
+            LogCaptureError(ex, orderId);
             var error = req.CreateResponse(HttpStatusCode.InternalServerError);
             await error.WriteStringAsync("Erreur lors de la capture");
             return error;

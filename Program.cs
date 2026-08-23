@@ -45,9 +45,6 @@ var host = new HostBuilder()
                 TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
 
         // ========== HTTP Clients avec Polly ==========
-        services.AddHttpClient("PayPal")
-            .AddPolicyHandler(retryPolicy);
-
         services.AddHttpClient<IPayPalWebhookService, PayPalWebhookService>()
             .AddPolicyHandler(retryPolicy);
 
