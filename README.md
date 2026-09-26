@@ -10,7 +10,7 @@ You speak. The system executes.
 
 ---
 
-## 🎮 Total Immersion
+## Total Immersion
 
 In games and simulators, every second matters.
 
@@ -19,11 +19,11 @@ With KeySpeech:
 - Your reactions are faster  
 - Your experience becomes truly immersive  
 
-Fly. Command. Execute. Without breaking the flow.
+Fly. Command. Execute. Without breaking the flow
 
 ---
 
-## 🔁 A Smarter Command System
+## A Smarter Command System
 
 KeySpeech lets you define dynamic synonyms directly inside your commands — giving you powerful flexibility without extra setup.
 
@@ -43,11 +43,11 @@ KeySpeech automatically understands and recognizes:
 ⚡ Zero duplication in setup  
 ⚡ Natural, immersive communication  
 
-This means you can speak the way you want — and KeySpeech adapts instantly.
+This means you can speak the way you want — and KeySpeech adapts instantly
 
 ---
 
-## ✋ Full Control with Push-To-Talk
+## Full Control with Push-To-Talk
 
 Choose how you interact:
 - Always listening mode  
@@ -57,7 +57,7 @@ Perfect for intense gameplay or controlled environments.
 
 ---
 
-## ⚡ Built for Performance
+## Built for Performance
 
 - Extremely fast response time  
 - Highly customizable  
@@ -66,7 +66,7 @@ Perfect for intense gameplay or controlled environments.
 
 ---
 
-## 🎯 Who is it for?
+## Who is it for?
 
 - Flight simulators  
 - Racing games  
@@ -76,14 +76,14 @@ Perfect for intense gameplay or controlled environments.
 
 ---
 
-## 💬 A New Way to Play
+## A New Way to Play
 
 With KeySpeech, you’re not using a keyboard anymore.
 
-**You command with your voice.**
+**You command with your voice**
 
 ---
 
-## 🔥 KeySpeech
+## KeySpeech
 
-**Speak less. Do more.**
+**Take Control. Say the Word.**
