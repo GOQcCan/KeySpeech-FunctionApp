@@ -39,9 +39,9 @@ KeySpeech automatically understands and recognizes:
 - “Fury permission to engage”
 - “Snake permission to engage”
 
-⚡ One command becomes many  
-⚡ Zero duplication in setup  
-⚡ Natural, immersive communication  
+**One command becomes many**<BR>
+**Zero duplication in setup**<BR>
+**Natural, immersive communication**
 
 This means you can speak the way you want — and KeySpeech adapts instantly
 
