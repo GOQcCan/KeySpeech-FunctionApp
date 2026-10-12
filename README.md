@@ -94,8 +94,8 @@ With KeySpeech, you’re not using a keyboard anymore.
 
 KeySpeech is the result of extensive research, development, testing, and refinement. As a commercial product, its core technologies are proprietary and are therefore not published publicly.
 
-This repository focuses exclusively on the license purchasing and activation infrastructure. We chose to make this part of the system public to promote transparency and allow users to understand how licensing operations are performed.
+This repository focuses exclusively on the license purchasing and activation infrastructure. I chose to make this part of the system public to promote transparency and allow users to understand how licensing operations are performed.
 
 The technologies that power KeySpeech, including voice command processing, advanced synonym management, keyboard simulation, and user experience features, remain private to protect ongoing development and innovation.
 
-Our goal is to strike a balance between transparency and intellectual property protection, ensuring users can trust the licensing process while allowing KeySpeech to continue evolving as a sustainable commercial project.
+My goal is to strike a balance between transparency and intellectual property protection, ensuring users can trust the licensing process while allowing KeySpeech to continue evolving as a sustainable commercial project.
