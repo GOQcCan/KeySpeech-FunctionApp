@@ -22,7 +22,7 @@ public class EmailService(EmailConfiguration config) : IEmailService
         };
         StringBuilder body = new();
 
-        body.Append("Dear Customer,<BR /><BR />");
+        body.Append($"Dear {fullName},<BR /><BR />");
 
         using MemoryStream ms = new(licenseKey);
         Attachment data = new(ms, "keyspeech.license");
