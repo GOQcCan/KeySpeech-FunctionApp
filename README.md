@@ -99,3 +99,15 @@ This repository focuses exclusively on the license purchasing and activation inf
 The technologies that power KeySpeech, including voice command processing, advanced synonym management, keyboard simulation, and user experience features, remain private to protect ongoing development and innovation.
 
 My goal is to strike a balance between transparency and intellectual property protection, ensuring users can trust the licensing process while allowing KeySpeech to continue evolving as a sustainable commercial project.
+
+---
+
+## Screenshots
+![](doc/settings_sentence_files.png)
+![](doc/settings_accuracy.png)
+![](doc/settings_control.png)
+![](doc/settings_control_editor.png)
+![](doc/sentence_list.png)
+![](doc/sentence_editor.png)
+![](doc/synonyms.png)
+![](doc/printer.png)
