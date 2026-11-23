@@ -3,7 +3,7 @@
 
 What if your voice became your most powerful control tool?
 
-**KeySpeech** turns your words into instant keyboard actions. Every phrase you speak becomes a precise, fast, and fully customizable command.
+**KeySpeech** turns your words into instant keyboard actions. Every sentence you speak becomes a precise, fast, and fully customizable command.
 
 No more juggling dozens of keybinds.  
 You speak. The system executes.
