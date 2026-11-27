@@ -29,7 +29,7 @@ jobs:
 
       - name: Publish
         run: >
-          dotnet publish ${{ env.AZURE_FUNCTIONAPP_PROJECT_PATH }}
+          dotnet publish 
           --configuration Release
           --runtime linux-x64
           --self-contained false
